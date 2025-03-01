@@ -3,118 +3,43 @@ package Service;
 import Data.CoworkingSpace;
 import Data.CoworkingType;
 import Exceptions.CoworkingSpaceException;
-import Exceptions.InvalidAvailabilityInputException;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 public class CoworkingSpaceService {
     private List<CoworkingSpace> spaces;
-    private Scanner scanner;
     private int nextId = 1;
     private static final String FILE_NAME = "spaces.dat";
 
-    public CoworkingSpaceService(Scanner scanner) {
-        this.scanner = scanner;
+    public CoworkingSpaceService() {
         this.spaces = new ArrayList<>();
         loadFromFile();
     }
 
-    public void addSpace() {
-        try {
-            System.out.println("Enter space details:");
+    public void addSpace(CoworkingType type, double price, boolean isAvailable) {
+        int id = nextId++;
+        CoworkingSpace space = new CoworkingSpace(id, type, price, isAvailable);
+        spaces.add(space);
+        saveToFile();
+    }
 
-            int id = nextId++;
+    public void removeSpace(int id) throws CoworkingSpaceException {
+        boolean removed = spaces.removeIf(space -> space.getId() == id);
+        if (!removed) {
+            throw new CoworkingSpaceException("Space with ID " + id + " not found.");
+        }
+        saveToFile();
+    }
 
-            scanner.nextLine();
-
-            System.out.println("Available types:");
-            for (CoworkingType type : CoworkingType.values()) {
-                System.out.println(type.getId() + ": " + type.getName());
-            }
-            System.out.print("Enter type ID: ");
-            int typeId = scanner.nextInt();
-            CoworkingType type = CoworkingType.getById(typeId);
-
-            System.out.print("Price: ");
-            double price = scanner.nextDouble();
-
-            System.out.print("Is available (true/false): ");
-            String availabilityInput = scanner.next().toLowerCase();
-            boolean isAvailable;
-
-            if (availabilityInput.equals("true")) {
-                isAvailable = true;
-            } else if (availabilityInput.equals("false")) {
-                isAvailable = false;
-            } else {
-                throw new InvalidAvailabilityInputException("Invalid input for availability. Please enter 'true' or 'false'.");
-            }
-
-            CoworkingSpace space = new CoworkingSpace(id, type, price, isAvailable);
-            spaces.add(space);
-            System.out.println("Space added successfully! Assigned ID: " + id);
-
+    public void toggleAvailability(int id, boolean newAvailability) throws CoworkingSpaceException {
+        CoworkingSpace space = getSpaceById(id);
+        if (space != null) {
+            space.setAvailable(newAvailability);
             saveToFile();
-        } catch (IllegalArgumentException e) {
-            System.err.println("Error: " + e.getMessage());
-        } catch (InvalidAvailabilityInputException e) {
-            System.err.println("Error: " + e.getMessage());
-        } catch (IOException e) {
-            System.err.println("Error saving data to file: " + e.getMessage());
-        }
-    }
-
-    public void removeSpace() {
-        try {
-            System.out.print("Enter the ID of the space to remove: ");
-            int id = scanner.nextInt();
-            boolean removed = spaces.removeIf(space -> space.getId() == id);
-            if (removed) {
-                System.out.println("Space removed successfully!");
-                saveToFile();
-            } else {
-                throw new CoworkingSpaceException("Space with ID " + id + " not found.");
-            }
-        } catch (CoworkingSpaceException e) {
-            System.err.println("Error: " + e.getMessage());
-        } catch (IOException e) {
-            System.err.println("Error saving data to file: " + e.getMessage());
-        }
-    }
-
-    public void toggleAvailability() {
-        try {
-            System.out.print("Enter the ID of the space to toggle availability: ");
-            int id = scanner.nextInt();
-            CoworkingSpace space = getSpaceById(id);
-            if (space != null) {
-                System.out.print("Enter new availability (true/false): ");
-                String availabilityInput = scanner.next().toLowerCase();
-                boolean newAvailability;
-
-                if (availabilityInput.equals("true")) {
-                    newAvailability = true;
-                } else if (availabilityInput.equals("false")) {
-                    newAvailability = false;
-                } else {
-                    throw new InvalidAvailabilityInputException("Invalid input for availability. Please enter 'true' or 'false'.");
-                }
-
-                space.setAvailable(newAvailability);
-                System.out.println("Availability updated successfully!");
-                saveToFile();
-            } else {
-                throw new CoworkingSpaceException("Space with ID " + id + " not found.");
-            }
-        } catch (CoworkingSpaceException e) {
-            System.err.println("Error: " + e.getMessage());
-        } catch (InvalidAvailabilityInputException e) {
-            System.err.println("Error: " + e.getMessage());
-        } catch (IOException e) {
-            System.err.println("Error saving data to file: " + e.getMessage());
+        } else {
+            throw new CoworkingSpaceException("Space with ID " + id + " not found.");
         }
     }
 
@@ -154,10 +79,12 @@ public class CoworkingSpaceService {
         }
     }
 
-    private void saveToFile() throws IOException {
+    private void saveToFile() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
             oos.writeObject(spaces);
             System.out.println("Data saved to file.");
+        } catch (IOException e) {
+            System.err.println("Error saving data to file: " + e.getMessage());
         }
     }
 
