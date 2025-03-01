@@ -2,6 +2,8 @@ package Service;
 
 import Data.CoworkingSpace;
 import Data.Reservation;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -16,6 +18,7 @@ public class ReservationService {
         this.reservations = new ArrayList<>();
         this.spaceService = spaceService;
         this.scanner = scanner;
+        loadReservationsFromFile();
     }
 
     public void addReservation() {
@@ -40,6 +43,7 @@ public class ReservationService {
             reservations.add(reservation);
             space.setAvailable(false);
             System.out.println("Reservation successful!");
+            saveReservationsToFile();
         }
     }
 
@@ -71,6 +75,7 @@ public class ReservationService {
                     reservation.getSpace().setAvailable(true);
                     reservations.remove(reservation);
                     System.out.println("Reservation canceled successfully!");
+                    saveReservationsToFile();
                 } else {
                     System.out.println("Reservation not found.");
                 }
@@ -98,5 +103,30 @@ public class ReservationService {
                 .filter(reservation -> reservation.getId() == id)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private void saveReservationsToFile() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("reservations.dat"))) {
+            oos.writeObject(reservations);
+            System.out.println("Reservations saved to file.");
+        } catch (IOException e) {
+            System.err.println("Error saving reservations to file: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void loadReservationsFromFile() {
+        File file = new File("reservations.dat");
+        if (!file.exists()) {
+            System.out.println("No reservations file found. Starting with an empty list.");
+            return;
+        }
+
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("reservations.dat"))) {
+            reservations = (List<Reservation>) ois.readObject();
+            System.out.println("Reservations loaded from file.");
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error loading reservations from file: " + e.getMessage());
+        }
     }
 }

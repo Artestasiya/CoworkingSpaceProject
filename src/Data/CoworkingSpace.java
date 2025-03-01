@@ -1,6 +1,8 @@
 package Data;
 
-public class CoworkingSpace {
+import java.io.Serializable;
+
+public class CoworkingSpace implements Serializable {
     private int id;
     private CoworkingType type;
     private double price;
