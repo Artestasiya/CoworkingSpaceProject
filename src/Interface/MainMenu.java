@@ -1,18 +1,20 @@
 package Interface;
+
 import Service.CoworkingSpaceService;
 import Service.ReservationService;
-
 import java.util.Scanner;
 
 public class MainMenu {
-    private CoworkingSpaceService spaceService;
-    private ReservationService reservationService;
+    private CoworkingSpaceUI spaceUI;
+    private ReservationUI reservationUI;
     private Scanner scanner;
 
     public MainMenu() {
         this.scanner = new Scanner(System.in);
-        this.spaceService = new CoworkingSpaceService(scanner);
-        this.reservationService = new ReservationService(spaceService, scanner);
+        CoworkingSpaceService spaceService = new CoworkingSpaceService();
+        ReservationService reservationService = new ReservationService(spaceService);
+        this.spaceUI = new CoworkingSpaceUI(spaceService, scanner);
+        this.reservationUI = new ReservationUI(reservationService, scanner);
     }
 
     public void showMainMenu() {
@@ -45,24 +47,24 @@ public class MainMenu {
         int choice = scanner.nextInt();
         switch (choice) {
             case 1:
-                spaceService.addSpace();
+                spaceUI.addSpace();
                 showAdminMenu();
                 break;
             case 2:
-                spaceService.removeSpace();
+                spaceUI.removeSpace();
                 showAdminMenu();
                 break;
             case 3:
-                reservationService.displayAllReservations();
+                reservationUI.displayAllReservations();
                 showAdminMenu();
                 break;
             case 4:
-                spaceService.displayAllSpaces();
-                showUserMenu();
+                spaceUI.displayAllSpaces();
+                showAdminMenu();
                 break;
             case 5:
-                spaceService.displayAvailableSpaces();
-                showUserMenu();
+                spaceUI.displayAvailableSpaces();
+                showAdminMenu();
                 break;
             case 6:
                 showMainMenu();
@@ -83,19 +85,19 @@ public class MainMenu {
         int choice = scanner.nextInt();
         switch (choice) {
             case 1:
-                spaceService.displayAvailableSpaces();
+                spaceUI.displayAvailableSpaces();
                 showUserMenu();
                 break;
             case 2:
-                reservationService.addReservation();
+                reservationUI.addReservation();
                 showUserMenu();
                 break;
             case 3:
-                reservationService.cancelReservation();
+                reservationUI.cancelReservation();
                 showUserMenu();
                 break;
             case 4:
-                spaceService.displayAllSpaces();
+                spaceUI.displayAllSpaces();
                 showUserMenu();
                 break;
             case 5:

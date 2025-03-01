@@ -1,6 +1,8 @@
 package Data;
 
-public class Reservation {
+import java.io.Serializable;
+
+public class Reservation implements Serializable {
     private int id;
     private String userName;
     private String date;
