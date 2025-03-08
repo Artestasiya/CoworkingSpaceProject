@@ -5,86 +5,85 @@ import Data.CoworkingType;
 import Exceptions.CoworkingSpaceException;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.logging.Logger;
 
 public class CoworkingSpaceService {
-    private List<CoworkingSpace> spaces;
+    private Map<Integer, CoworkingSpace> spaceMap;
     private int nextId = 1;
     private static final String FILE_NAME = "spaces.dat";
+    private static final Logger logger = Logger.getLogger(CoworkingSpaceService.class.getName());
 
     public CoworkingSpaceService() {
-        this.spaces = new ArrayList<>();
+        this.spaceMap = new HashMap<>();
         loadFromFile();
     }
 
     public void addSpace(CoworkingType type, double price, boolean isAvailable) {
         int id = nextId++;
         CoworkingSpace space = new CoworkingSpace(id, type, price, isAvailable);
-        spaces.add(space);
+        spaceMap.put(id, space);
         saveToFile();
+        logger.info("Added new space: " + space);
     }
 
     public void removeSpace(int id) throws CoworkingSpaceException {
-        boolean removed = spaces.removeIf(space -> space.getId() == id);
-        if (!removed) {
+        if (spaceMap.remove(id) == null) {
             throw new CoworkingSpaceException("Space with ID " + id + " not found.");
         }
         saveToFile();
+        logger.info("Removed space with ID: " + id);
     }
 
     public void toggleAvailability(int id, boolean newAvailability) throws CoworkingSpaceException {
-        CoworkingSpace space = getSpaceById(id);
+        CoworkingSpace space = spaceMap.get(id);
         if (space != null) {
             space.setAvailable(newAvailability);
             saveToFile();
+            logger.info("Toggled availability for space with ID: " + id);
         } else {
             throw new CoworkingSpaceException("Space with ID " + id + " not found.");
         }
     }
 
     public void displayAvailableSpaces() {
-        if (spaces.isEmpty()) {
+        if (spaceMap.isEmpty()) {
             System.out.println("No spaces available.");
         } else {
-            for (CoworkingSpace space : spaces) {
-                if (space.isAvailable()) {
-                    System.out.println("ID: " + space.getId());
-                    System.out.println("Type: " + space.getType().getName());
-                    System.out.println("Price: " + space.getPrice());
-                    System.out.println("------------------------");
-                }
-            }
+            spaceMap.values().stream()
+                    .filter(CoworkingSpace::isAvailable)
+                    .forEach(space -> {
+                        System.out.println("ID: " + space.getId());
+                        System.out.println("Type: " + space.getType().getName());
+                        System.out.println("Price: " + space.getPrice());
+                        System.out.println("------------------------");
+                    });
         }
     }
 
-    public CoworkingSpace getSpaceById(int id) {
-        return spaces.stream()
-                .filter(space -> space.getId() == id)
-                .findFirst()
-                .orElse(null);
+    public Optional<CoworkingSpace> getSpaceById(int id) {
+        return Optional.ofNullable(spaceMap.get(id));
     }
 
     public void displayAllSpaces() {
-        if (spaces.isEmpty()) {
+        if (spaceMap.isEmpty()) {
             System.out.println("No spaces available.");
         } else {
-            for (CoworkingSpace space : spaces) {
+            spaceMap.values().forEach(space -> {
                 System.out.println("ID: " + space.getId());
                 System.out.println("Type: " + space.getType().getName());
                 System.out.println("Price: " + space.getPrice());
                 System.out.println("Available: " + space.isAvailable());
                 System.out.println("------------------------");
-            }
+            });
         }
     }
 
     private void saveToFile() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
-            oos.writeObject(spaces);
-            System.out.println("Data saved to file.");
+            oos.writeObject(new ArrayList<>(spaceMap.values()));
         } catch (IOException e) {
-            System.err.println("Error saving data to file: " + e.getMessage());
+            logger.severe("Error saving data to file: " + e.getMessage());
         }
     }
 
@@ -92,21 +91,15 @@ public class CoworkingSpaceService {
     private void loadFromFile() {
         File file = new File(FILE_NAME);
         if (!file.exists()) {
-            try {
-                file.createNewFile();
-                System.out.println("Created new data file.");
-            } catch (IOException e) {
-                System.err.println("Error creating data file: " + e.getMessage());
-            }
             return;
         }
 
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(FILE_NAME))) {
-            spaces = (List<CoworkingSpace>) ois.readObject();
-            nextId = spaces.stream().mapToInt(CoworkingSpace::getId).max().orElse(0) + 1;
-            System.out.println("Data loaded from file.");
+            List<CoworkingSpace> loadedSpaces = (List<CoworkingSpace>) ois.readObject();
+            loadedSpaces.forEach(space -> spaceMap.put(space.getId(), space));
+            nextId = spaceMap.keySet().stream().mapToInt(Integer::intValue).max().orElse(0) + 1;
         } catch (IOException | ClassNotFoundException e) {
-            System.err.println("Error loading data from file: " + e.getMessage());
+            logger.severe("Error loading data from file: " + e.getMessage());
         }
     }
 }
