@@ -1,6 +1,5 @@
 package Interface;
 
-import Data.CoworkingSpace;
 import Data.CoworkingType;
 import Exceptions.CoworkingSpaceException;
 import Exceptions.InvalidAvailabilityInputException;

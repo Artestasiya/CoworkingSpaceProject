@@ -1,6 +1,5 @@
 package Interface;
 
-import Data.CoworkingSpace;
 import Data.Reservation;
 import Service.ReservationService;
 import java.util.List;

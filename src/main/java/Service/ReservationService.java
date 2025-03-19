@@ -1,5 +1,6 @@
 package Service;
 
+import Service.CoworkingSpaceService;
 import Data.CoworkingSpace;
 import Data.Reservation;
 

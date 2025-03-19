@@ -4,11 +4,11 @@ import java.io.Serializable;
 
 public class CoworkingSpace implements Serializable {
     private int id;
-    private CoworkingType type;
+    private Data.CoworkingType type;
     private double price;
     private boolean isAvailable;
 
-    public CoworkingSpace(int id, CoworkingType type, double price, boolean isAvailable) {
+    public CoworkingSpace(int id, Data.CoworkingType type, double price, boolean isAvailable) {
         this.id = id;
         this.type = type;
         this.price = price;
@@ -19,7 +19,7 @@ public class CoworkingSpace implements Serializable {
         return id;
     }
 
-    public CoworkingType getType() {
+    public Data.CoworkingType getType() {
         return type;
     }
 

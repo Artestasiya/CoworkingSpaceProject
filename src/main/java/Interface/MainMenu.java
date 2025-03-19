@@ -5,16 +5,16 @@ import Service.ReservationService;
 import java.util.Scanner;
 
 public class MainMenu {
-    private CoworkingSpaceUI spaceUI;
-    private ReservationUI reservationUI;
+    private Interface.CoworkingSpaceUI spaceUI;
+    private Interface.ReservationUI reservationUI;
     private Scanner scanner;
 
     public MainMenu() {
         this.scanner = new Scanner(System.in);
         CoworkingSpaceService spaceService = new CoworkingSpaceService();
         ReservationService reservationService = new ReservationService(spaceService);
-        this.spaceUI = new CoworkingSpaceUI(spaceService, scanner);
-        this.reservationUI = new ReservationUI(reservationService, scanner);
+        this.spaceUI = new Interface.CoworkingSpaceUI(spaceService, scanner);
+        this.reservationUI = new Interface.ReservationUI(reservationService, scanner);
     }
 
     public void showMainMenu() {
