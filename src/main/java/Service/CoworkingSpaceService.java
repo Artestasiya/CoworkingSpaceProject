@@ -33,11 +33,6 @@ public class CoworkingSpaceService {
         logger.info("Added new space: " + space);
     }
 
-    public void clearSpaces() {
-        spaceMap.clear();
-        saveToFile();
-    }
-
     public void removeSpace(int id) throws CoworkingSpaceException {
         if (spaceMap.remove(id) == null) {
             throw new CoworkingSpaceException("Space with ID " + id + " not found.");

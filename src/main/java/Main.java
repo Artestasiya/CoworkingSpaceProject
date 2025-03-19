@@ -6,7 +6,7 @@ public class Main {
         CustomClassLoader customClassLoader = new CustomClassLoader("classes/");
 
         try {
-            Class<?> loadedClass = customClassLoader.loadClass("main.java.Data.CoworkingSpace");
+            Class<?> loadedClass = customClassLoader.loadClass("Data.CoworkingSpace");
             System.out.println("Class loaded: " + loadedClass.getName());
         } catch (ClassNotFoundException e) {
             System.err.println("Failed to load class: " + e.getMessage());
