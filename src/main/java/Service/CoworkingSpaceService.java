@@ -20,11 +20,22 @@ public class CoworkingSpaceService {
     }
 
     public void addSpace(CoworkingType type, double price, boolean isAvailable) {
+        if (type == null) {
+            throw new IllegalArgumentException("Type cannot be null.");
+        }
+        if (price < 0) {
+            throw new IllegalArgumentException("Price cannot be negative. Provided value: " + price);
+        }
         int id = nextId++;
         CoworkingSpace space = new CoworkingSpace(id, type, price, isAvailable);
         spaceMap.put(id, space);
         saveToFile();
         logger.info("Added new space: " + space);
+    }
+
+    public void clearSpaces() {
+        spaceMap.clear();
+        saveToFile();
     }
 
     public void removeSpace(int id) throws CoworkingSpaceException {
@@ -65,17 +76,19 @@ public class CoworkingSpaceService {
         return Optional.ofNullable(spaceMap.get(id));
     }
 
-    public void displayAllSpaces() {
+    public String displayAllSpaces() {
         if (spaceMap.isEmpty()) {
-            System.out.println("No spaces available.");
+            return "No spaces available.";
         } else {
+            StringBuilder result = new StringBuilder();
             spaceMap.values().forEach(space -> {
-                System.out.println("ID: " + space.getId());
-                System.out.println("Type: " + space.getType().getName());
-                System.out.println("Price: " + space.getPrice());
-                System.out.println("Available: " + space.isAvailable());
-                System.out.println("------------------------");
+                result.append("ID: ").append(space.getId()).append("\n")
+                        .append("Type: ").append(space.getType().getName()).append("\n")
+                        .append("Price: ").append(space.getPrice()).append("\n")
+                        .append("Available: ").append(space.isAvailable()).append("\n")
+                        .append("------------------------\n");
             });
+            return result.toString();
         }
     }
 
