@@ -1,92 +1,102 @@
 package Service;
 
-import Service.CoworkingSpaceService;
 import Data.CoworkingSpace;
+import Data.DatabaseManager;
 import Data.Reservation;
-
-import java.io.*;
-import java.util.*;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
+import Exceptions.ReservationException;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
 
 public class ReservationService {
-    private Map<Integer, Reservation> reservationMap;
-    private CoworkingSpaceService spaceService;
-    private static final Logger logger = Logger.getLogger(ReservationService.class.getName());
+    private final DatabaseManager dbManager;
+    private final CoworkingSpaceService spaceService;
 
-    public ReservationService(CoworkingSpaceService spaceService) {
-        this.reservationMap = new HashMap<>();
+    public ReservationService(DatabaseManager dbManager, CoworkingSpaceService spaceService) {
+        this.dbManager = dbManager;
         this.spaceService = spaceService;
-        loadReservationsFromFile();
     }
 
-    public void addReservation(String userName, String date, String startTime, String endTime, int spaceId) {
-        Optional<CoworkingSpace> spaceOpt = spaceService.getSpaceById(spaceId);
-        if (spaceOpt.isEmpty() || !spaceOpt.get().isAvailable()) {
-            System.out.println("Space not available or does not exist.");
-            return;
-        }
+    public void addReservation(String userName, String date, String startTime, String endTime, int spaceId)
+            throws ReservationException {
+        try {
+            dbManager.beginTransaction();
 
-        int id = reservationMap.size() + 1;
-        Reservation reservation = new Reservation(id, userName, date, startTime, endTime, spaceOpt.get());
-        reservationMap.put(id, reservation);
-        spaceOpt.get().setAvailable(false);
-        saveReservationsToFile();
-        logger.info("Added new reservation: " + reservation);
-    }
+            Optional<CoworkingSpace> spaceOpt = spaceService.getSpaceById(spaceId);
+            if (spaceOpt.isEmpty() || !spaceOpt.get().isAvailable()) {
+                throw new ReservationException("Пространство недоступно или не существует");
+            }
 
-    public void cancelReservation(int reservationId) {
-        Reservation reservation = reservationMap.remove(reservationId);
-        if (reservation != null) {
-            reservation.getSpace().setAvailable(true);
-            saveReservationsToFile();
-            logger.info("Canceled reservation with ID: " + reservationId);
-        } else {
-            System.out.println("Reservation not found.");
+            if (!dbManager.isSpaceAvailable(spaceId, date, startTime, endTime)) {
+                throw new ReservationException("Пространство уже занято в указанное время");
+            }
+
+            Reservation reservation = new Reservation(0, userName, date, startTime, endTime, spaceOpt.get());
+            dbManager.addReservation(reservation);
+            dbManager.updateCoworkingSpaceAvailability(spaceId, false);
+
+            dbManager.commitTransaction();
+        } catch (Exception e) {
+            dbManager.rollbackTransaction();
+            throw new ReservationException("Не удалось создать бронирование: " + e.getMessage(), e);
         }
     }
 
-    public List<Reservation> getReservationsByUser(String userName) {
-        return reservationMap.values().stream()
-                .filter(reservation -> reservation.getUserName().equals(userName))
-                .collect(Collectors.toList());
+    public void cancelReservation(int reservationId) throws ReservationException {
+        try {
+            dbManager.beginTransaction();
+
+            Optional<Reservation> reservationOpt = dbManager.getReservationById(reservationId);
+            if (reservationOpt.isEmpty()) {
+                throw new ReservationException("Бронирование с ID " + reservationId + " не найдено");
+            }
+
+            Reservation reservation = reservationOpt.get();
+            dbManager.cancelReservation(reservationId);
+
+            // Обновляем доступность пространства
+            dbManager.updateCoworkingSpaceAvailability(reservation.getSpace().getId(), true);
+
+            dbManager.commitTransaction();
+        } catch (SQLException e) {
+            dbManager.rollbackTransaction();
+            throw new ReservationException("Не удалось отменить бронирование: " + e.getMessage(), e);
+        }
+    }
+
+    public List<Reservation> getReservationsByUser(String userName) throws ReservationException {
+        try {
+            return dbManager.getReservationsByUser(userName);
+        } catch (SQLException e) {
+            throw new ReservationException("Ошибка при получении бронирований пользователя", e);
+        }
     }
 
     public void displayAllReservations() {
-        if (reservationMap.isEmpty()) {
-            System.out.println("No reservations found.");
-        } else {
-            reservationMap.values().forEach(reservation -> {
-                System.out.println("Reservation ID: " + reservation.getId());
-                System.out.println("User: " + reservation.getUserName());
-                System.out.println("Date: " + reservation.getDate());
-                System.out.println("Time: " + reservation.getStartTime() + " - " + reservation.getEndTime());
-                System.out.println("Space ID: " + reservation.getSpace().getId());
-                System.out.println("------------------------");
+        try {
+            List<Reservation> reservations = dbManager.getAllReservations();
+            if (reservations.isEmpty()) {
+                System.out.println("Нет активных бронирований");
+                return;
+            }
+
+            System.out.println("\nВсе бронирования:");
+            System.out.println("-----------------------");
+            reservations.forEach(reservation -> {
+                System.out.println("ID: " + reservation.getId());
+                System.out.println("Пользователь: " + reservation.getUserName());
+                System.out.println("Дата: " + reservation.getDate());
+                System.out.println("Время: " + reservation.getStartTime() + " - " + reservation.getEndTime());
+                System.out.println("Пространство ID: " + reservation.getSpace().getId());
+                try {
+                    System.out.println("Тип: " + reservation.getSpace().getType().getName());
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+                System.out.println("-----------------------");
             });
-        }
-    }
-
-    private void saveReservationsToFile() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("reservations.dat"))) {
-            oos.writeObject(new ArrayList<>(reservationMap.values()));
-        } catch (IOException e) {
-            logger.severe("Error saving reservations to file: " + e.getMessage());
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void loadReservationsFromFile() {
-        File file = new File("reservations.dat");
-        if (!file.exists()) {
-            return;
-        }
-
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("reservations.dat"))) {
-            List<Reservation> loadedReservations = (List<Reservation>) ois.readObject();
-            loadedReservations.forEach(reservation -> reservationMap.put(reservation.getId(), reservation));
-        } catch (IOException | ClassNotFoundException e) {
-            logger.severe("Error loading reservations from file: " + e.getMessage());
+        } catch (SQLException e) {
+            System.err.println("Ошибка при получении списка бронирований: " + e.getMessage());
         }
     }
 }

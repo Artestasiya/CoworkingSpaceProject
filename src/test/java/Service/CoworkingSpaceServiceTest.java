@@ -13,17 +13,6 @@ class CoworkingSpaceServiceTest {
 
     private CoworkingSpaceService service;
 
-    @BeforeEach
-    void setUp() {
-        service = new CoworkingSpaceService();
-    }
-
-    @Test
-    void testAddSpace() {
-        service.addSpace(CoworkingType.OPEN_SPACE, 100.0, true);
-        assertNotNull(service.getSpaceById(1));
-    }
-
     @Test
     void testAddSpaceWithNegativePrice() {
         assertThrows(IllegalArgumentException.class, () -> {

@@ -1,111 +1,131 @@
 package Interface;
 
+import Data.DatabaseManager;
 import Service.CoworkingSpaceService;
 import Service.ReservationService;
 import java.util.Scanner;
 
 public class MainMenu {
-    private Interface.CoworkingSpaceUI spaceUI;
-    private Interface.ReservationUI reservationUI;
-    private Scanner scanner;
+    private final CoworkingSpaceUI spaceUI;
+    private final ReservationUI reservationUI;
+    private final Scanner scanner;
+    private final DatabaseManager dbManager;
 
     public MainMenu() {
         this.scanner = new Scanner(System.in);
-        CoworkingSpaceService spaceService = new CoworkingSpaceService();
-        ReservationService reservationService = new ReservationService(spaceService);
-        this.spaceUI = new Interface.CoworkingSpaceUI(spaceService, scanner);
-        this.reservationUI = new Interface.ReservationUI(reservationService, scanner);
+        this.dbManager = new DatabaseManager();
+        if (!dbManager.testConnection()) {
+            System.err.println("Не удалось подключиться к базе данных!");
+            System.exit(1);
+        }
+
+        CoworkingSpaceService spaceService = new CoworkingSpaceService(dbManager);
+        ReservationService reservationService = new ReservationService(dbManager, spaceService);
+
+        this.spaceUI = new CoworkingSpaceUI(spaceService, dbManager, scanner);
+        this.reservationUI = new ReservationUI(reservationService, scanner);
     }
 
     public void showMainMenu() {
-        System.out.println("Welcome to Cowork");
-        System.out.println("Send 1 to Admin");
-        System.out.println("Send 2 to User");
-        System.out.println("Yours role ? ");
-        int role = scanner.nextInt();
-        switch (role) {
-            case 1:
-                showAdminMenu();
-                break;
-            case 2:
-                showUserMenu();
-                break;
-            default:
-                System.out.println("Undefined role, try again");
-                showMainMenu();
+        try {
+            while (true) {
+                System.out.println("\nWelcome to Cowork");
+                System.out.println("1. Admin");
+                System.out.println("2. User");
+                System.out.println("3. Exit");
+                System.out.print("Your role? ");
+
+                int role = scanner.nextInt();
+                scanner.nextLine();
+
+                switch (role) {
+                    case 1:
+                        showAdminMenu();
+                        break;
+                    case 2:
+                        showUserMenu();
+                        break;
+                    case 3:
+                        System.out.println("Goodbye!");
+                        return;
+                    default:
+                        System.out.println("Invalid choice, try again");
+                }
+            }
+        } finally {
+            dbManager.closeConnection();
         }
     }
 
     private void showAdminMenu() {
-        System.out.println("Admin Menu");
-        System.out.println("1. Add new coworking space");
-        System.out.println("2. Remove coworking space");
-        System.out.println("3. View all reservations");
-        System.out.println("4. Types of spaces");
-        System.out.println("5. Browse available spaces");
-        System.out.println("6. Back to main menu");
-        int choice = scanner.nextInt();
-        switch (choice) {
-            case 1:
-                spaceUI.addSpace();
-                showAdminMenu();
-                break;
-            case 2:
-                spaceUI.removeSpace();
-                showAdminMenu();
-                break;
-            case 3:
-                reservationUI.displayAllReservations();
-                showAdminMenu();
-                break;
-            case 4:
-                spaceUI.displayAllSpaces();
-                showAdminMenu();
-                break;
-            case 5:
-                spaceUI.displayAvailableSpaces();
-                showAdminMenu();
-                break;
-            case 6:
-                showMainMenu();
-                break;
-            default:
-                System.out.println("Invalid choice, try again");
-                showAdminMenu();
+        while (true) {
+            System.out.println("\nAdmin Menu");
+            System.out.println("1. Add new coworking space");
+            System.out.println("2. Remove coworking space");
+            System.out.println("3. View all reservations");
+            System.out.println("4. View all spaces");
+            System.out.println("5. Browse available spaces");
+            System.out.println("6. Back to main menu");
+            System.out.print("Your choice: ");
+
+            int choice = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (choice) {
+                case 1:
+                    spaceUI.addSpace();
+                    break;
+                case 2:
+                    spaceUI.removeSpace();
+                    break;
+                case 3:
+                    reservationUI.displayAllReservations();
+                    break;
+                case 4:
+                    spaceUI.displayAllSpaces();
+                    break;
+                case 5:
+                    spaceUI.displayAvailableSpaces();
+                    break;
+                case 6:
+                    return;
+                default:
+                    System.out.println("Invalid choice, try again");
+            }
         }
     }
 
     private void showUserMenu() {
-        System.out.println("User Menu");
-        System.out.println("1. Browse available spaces");
-        System.out.println("2. Make a reservation");
-        System.out.println("3. View and cancel reservations");
-        System.out.println("4. Types of spaces");
-        System.out.println("5. Back to main menu");
-        int choice = scanner.nextInt();
-        switch (choice) {
-            case 1:
-                spaceUI.displayAvailableSpaces();
-                showUserMenu();
-                break;
-            case 2:
-                reservationUI.addReservation();
-                showUserMenu();
-                break;
-            case 3:
-                reservationUI.cancelReservation();
-                showUserMenu();
-                break;
-            case 4:
-                spaceUI.displayAllSpaces();
-                showUserMenu();
-                break;
-            case 5:
-                showMainMenu();
-                break;
-            default:
-                System.out.println("Invalid choice, try again");
-                showUserMenu();
+        while (true) {
+            System.out.println("\nUser Menu");
+            System.out.println("1. Browse available spaces");
+            System.out.println("2. Make a reservation");
+            System.out.println("3. View and cancel reservations");
+            System.out.println("4. View all spaces");
+            System.out.println("5. Back to main menu");
+            System.out.print("Your choice: ");
+
+            int choice = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (choice) {
+                case 1:
+                    spaceUI.displayAvailableSpaces();
+                    break;
+                case 2:
+                    reservationUI.addReservation();
+                    break;
+                case 3:
+                    reservationUI.cancelReservation();
+                    break;
+                case 4:
+                    spaceUI.displayAllSpaces();
+                    break;
+                case 5:
+                    return;
+                default:
+                    System.out.println("Invalid choice, try again");
+            }
         }
     }
 }

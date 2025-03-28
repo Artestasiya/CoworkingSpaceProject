@@ -8,15 +8,29 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <junit.version>5.10.0</junit.version>
         <mockito.version>5.5.0</mockito.version>
         <slf4j.version>2.0.7</slf4j.version>
+        <mssql.jdbc.version>12.4.2.jre11</mssql.jdbc.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>microsoft</id>
+            <name>Microsoft SQL Server JDBC</name>
+            <url>https://repo.maven.apache.org/maven2/com/microsoft/sqlserver/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
+
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>${mssql.jdbc.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -89,7 +103,6 @@
         </testResources>
 
         <plugins>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
