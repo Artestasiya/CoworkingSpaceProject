@@ -15,7 +15,6 @@ public class DatabaseManager {
     private static Connection connection;
     private Map<Integer, String> spaceTypesCache;
 
-    // Метод для проверки доступности пространства
     public boolean isSpaceAvailable(int spaceId, String date, String startTime, String endTime) throws SQLException {
         String sql = "SELECT COUNT(*) FROM Reservation WHERE space_id = ? AND date = ? AND " +
                 "((start_time < ? AND end_time > ?) OR " +
@@ -41,7 +40,6 @@ public class DatabaseManager {
         return true;
     }
 
-    // Метод для добавления бронирования
     public void addReservation(Reservation reservation) throws SQLException {
         String sql = "INSERT INTO Reservation (user_name, date, start_time, end_time, space_id) " +
                 "VALUES (?, ?, ?, ?, ?)";
@@ -62,7 +60,6 @@ public class DatabaseManager {
         }
     }
 
-    // Метод для получения бронирования по ID
     public Optional<Reservation> getReservationById(int reservationId) throws SQLException {
         String sql = "SELECT r.id, r.user_name, r.date, r.start_time, r.end_time, " +
                 "cs.id as space_id, cs.type_id, cs.price, cs.is_available " +
@@ -80,7 +77,6 @@ public class DatabaseManager {
         return Optional.empty();
     }
 
-    // Метод для отмены бронирования
     public void cancelReservation(int reservationId) throws SQLException {
         String sql = "DELETE FROM Reservation WHERE id = ?";
         try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
@@ -89,7 +85,6 @@ public class DatabaseManager {
         }
     }
 
-    // Вспомогательный метод для маппинга результата запроса в объект Reservation
     private Reservation mapReservation(ResultSet rs) throws SQLException {
         CoworkingSpace space = new CoworkingSpace(
                 rs.getInt("space_id"),
@@ -108,7 +103,6 @@ public class DatabaseManager {
         );
     }
 
-    // Остальные методы класса остаются без изменений
     public boolean testConnection() {
         try (Connection conn = getConnection()) {
             refreshSpaceTypesCache();

@@ -17,7 +17,6 @@ public class CoworkingSpaceService {
 
     public void addSpace(int typeId, double price, boolean isAvailable) throws CoworkingSpaceException {
         try {
-            // Проверяем существование типа
             if (dbManager.getTypeNameById(typeId) == null) {
                 throw new CoworkingSpaceException("Invalid space type ID");
             }

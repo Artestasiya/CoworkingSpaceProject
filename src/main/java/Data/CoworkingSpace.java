@@ -8,9 +8,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class CoworkingSpace implements Serializable {
-    private int id;  // Made final if ID shouldn't change
-    private final int typeId;  // Made final if type shouldn't change
-    private final double price;  // Made final if price shouldn't change
+    private int id;
+    private final int typeId;
+    private final double price;
     private boolean isAvailable;
 
     public CoworkingSpace(int id, int typeId, double price, boolean isAvailable) {
@@ -20,14 +20,12 @@ public class CoworkingSpace implements Serializable {
         this.isAvailable = isAvailable;
     }
 
-    // Getters only for immutable fields
     public int getId() { return id; }
     public int getTypeId() { return typeId; }
     public double getPrice() { return price; }
     public void setId(int id) {
         this.id = id;
     }
-    // Getter and setter for mutable field
     public boolean isAvailable() { return isAvailable; }
     public void setAvailable(boolean available) { isAvailable = available; }
 

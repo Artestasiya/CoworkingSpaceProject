@@ -116,7 +116,7 @@ public class CoworkingSpaceUI {
             }
         } catch (InputMismatchException e) {
             System.err.println("Error: Please enter a valid number for space ID");
-            scanner.nextLine(); // Clear invalid input
+            scanner.nextLine();
         } catch (CoworkingSpaceException e) {
             System.err.println("Error: " + e.getMessage());
         }

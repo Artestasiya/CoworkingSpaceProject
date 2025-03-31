@@ -15,7 +15,7 @@ public class MainMenu {
         this.scanner = new Scanner(System.in);
         this.dbManager = new DatabaseManager();
         if (!dbManager.testConnection()) {
-            System.err.println("Не удалось подключиться к базе данных!");
+            System.err.println("couldn't connect to the database!");
             System.exit(1);
         }
 

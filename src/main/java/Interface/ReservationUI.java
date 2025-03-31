@@ -30,7 +30,7 @@ public class ReservationUI {
 
             System.out.print("Enter the ID of the space you want to book: ");
             int spaceId = scanner.nextInt();
-            scanner.nextLine(); // Clear buffer
+            scanner.nextLine();
 
             reservationService.addReservation(userName, date, startTime, endTime, spaceId);
             System.out.println("Reservation added successfully!");
@@ -60,7 +60,7 @@ public class ReservationUI {
 
             System.out.print("\nEnter reservation ID to cancel (0 to cancel): ");
             int reservationId = scanner.nextInt();
-            scanner.nextLine(); // Clear buffer
+            scanner.nextLine();
 
             if (reservationId != 0) {
                 reservationService.cancelReservation(reservationId);
