@@ -4,7 +4,6 @@ import Data.CoworkingSpace;
 import Data.DatabaseManager;
 import Data.Reservation;
 import Exceptions.CoworkingSpaceException;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,7 +22,7 @@ public class CoworkingSpaceService {
 
             CoworkingSpace space = new CoworkingSpace(0, typeId, price, isAvailable);
             dbManager.addCoworkingSpace(space);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new CoworkingSpaceException("Error adding space", e);
         }
     }
@@ -35,7 +34,7 @@ public class CoworkingSpaceService {
                 throw new CoworkingSpaceException("Cannot delete space with active reservations");
             }
             dbManager.deleteCoworkingSpace(id);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new CoworkingSpaceException("Error deleting space", e);
         }
     }
@@ -43,7 +42,7 @@ public class CoworkingSpaceService {
     public void toggleAvailability(int spaceId, boolean isAvailable) throws CoworkingSpaceException {
         try {
             dbManager.updateCoworkingSpaceAvailability(spaceId, isAvailable);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new CoworkingSpaceException("Error updating availability", e);
         }
     }
@@ -51,7 +50,7 @@ public class CoworkingSpaceService {
     public List<CoworkingSpace> getAllSpaces() throws CoworkingSpaceException {
         try {
             return dbManager.getAllCoworkingSpaces();
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new CoworkingSpaceException("Error getting spaces", e);
         }
     }
@@ -61,7 +60,7 @@ public class CoworkingSpaceService {
             return dbManager.getAllCoworkingSpaces().stream()
                     .filter(CoworkingSpace::isAvailable)
                     .toList();
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new CoworkingSpaceException("Error getting available spaces", e);
         }
     }
@@ -69,7 +68,7 @@ public class CoworkingSpaceService {
     public Optional<CoworkingSpace> getSpaceById(int id) throws CoworkingSpaceException {
         try {
             return dbManager.getCoworkingSpaceById(id);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new CoworkingSpaceException("Error getting space by ID", e);
         }
     }

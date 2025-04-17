@@ -5,7 +5,6 @@ import Data.DatabaseManager;
 import Exceptions.CoworkingSpaceException;
 import Exceptions.InvalidAvailabilityInputException;
 import Service.CoworkingSpaceService;
-import java.sql.SQLException;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
@@ -52,8 +51,6 @@ public class CoworkingSpaceUI {
 
             spaceService.addSpace(typeId, price, isAvailable);
             System.out.println("Space added successfully!");
-        } catch (SQLException e) {
-            System.err.println("Database error: " + e.getMessage());
         } catch (CoworkingSpaceException e) {
             System.err.println("Error adding space: " + e.getMessage());
         } catch (Exception e) {

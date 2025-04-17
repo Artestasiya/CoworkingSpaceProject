@@ -15,7 +15,7 @@ public class MainMenu {
         this.scanner = new Scanner(System.in);
         this.dbManager = new DatabaseManager();
         if (!dbManager.testConnection()) {
-            System.err.println("couldn't connect to the database!");
+            System.err.println("Couldn't connect to the database!");
             System.exit(1);
         }
 
@@ -53,7 +53,7 @@ public class MainMenu {
                 }
             }
         } finally {
-            dbManager.closeConnection();
+            dbManager.close();
         }
     }
 

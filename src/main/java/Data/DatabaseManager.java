@@ -1,301 +1,237 @@
 package Data;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import javax.persistence.*;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
-public class DatabaseManager {
-    private static final String DB_URL = "jdbc:sqlserver://localhost:1433;databaseName=CoworkingDB;encrypt=true;trustServerCertificate=true";
-    private static final String USER = "Admin";
-    private static final String PASS = "Admin";
+public class DatabaseManager implements AutoCloseable {
+    private static EntityManagerFactory emf;
+    private final EntityManager em;
+    private final Map<Integer, String> spaceTypesCache = new ConcurrentHashMap<>();
+    private final Map<Integer, CoworkingSpace> spacesCache = new ConcurrentHashMap<>();
+    static {
+        try {
+            System.out.println("Creating EMF for: CoworkingPU");
+            // Add some debug logging for connection properties
+            Map<String, String> properties = new HashMap<>();
+            properties.put("javax.persistence.jdbc.url",
+                    "jdbc:sqlserver://localhost:1433;databaseName=CoworkingDB;encrypt=true;trustServerCertificate=true");
+            properties.put("javax.persistence.jdbc.user", "Admin");
+            properties.put("javax.persistence.jdbc.password", "Admin");
 
-    private static Connection connection;
-    private Map<Integer, String> spaceTypesCache;
+            emf = Persistence.createEntityManagerFactory("CoworkingPU", properties);
+            System.out.println("EMF created successfully!");
 
-    public boolean isSpaceAvailable(int spaceId, String date, String startTime, String endTime) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM Reservation WHERE space_id = ? AND date = ? AND " +
-                "((start_time < ? AND end_time > ?) OR " +
-                "(start_time < ? AND end_time > ?) OR " +
-                "(start_time >= ? AND end_time <= ?))";
-
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
-            pstmt.setInt(1, spaceId);
-            pstmt.setString(2, date);
-            pstmt.setString(3, endTime);
-            pstmt.setString(4, startTime);
-            pstmt.setString(5, endTime);
-            pstmt.setString(6, startTime);
-            pstmt.setString(7, startTime);
-            pstmt.setString(8, endTime);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) == 0;
-                }
+            // Test connection immediately
+            EntityManager testEm = emf.createEntityManager();
+            try {
+                boolean connected = testEm.createQuery("SELECT 1", Integer.class).getSingleResult() == 1;
+                System.out.println("Database connection test: " + (connected ? "SUCCESS" : "FAILED"));
+            } finally {
+                testEm.close();
             }
-        }
-        return true;
-    }
-
-    public void addReservation(Reservation reservation) throws SQLException {
-        String sql = "INSERT INTO Reservation (user_name, date, start_time, end_time, space_id) " +
-                "VALUES (?, ?, ?, ?, ?)";
-
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            pstmt.setString(1, reservation.getUserName());
-            pstmt.setString(2, reservation.getDate());
-            pstmt.setString(3, reservation.getStartTime());
-            pstmt.setString(4, reservation.getEndTime());
-            pstmt.setInt(5, reservation.getSpace().getId());
-            pstmt.executeUpdate();
-
-            try (ResultSet rs = pstmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    reservation.setId(rs.getInt(1));
-                }
-            }
+        } catch (Exception e) {
+            System.err.println("EMF creation failed: " + e.getMessage());
+            e.printStackTrace();
+            throw new ExceptionInInitializerError(e);
         }
     }
 
-    public Optional<Reservation> getReservationById(int reservationId) throws SQLException {
-        String sql = "SELECT r.id, r.user_name, r.date, r.start_time, r.end_time, " +
-                "cs.id as space_id, cs.type_id, cs.price, cs.is_available " +
-                "FROM Reservation r JOIN CoworkingSpace cs ON r.space_id = cs.id " +
-                "WHERE r.id = ?";
-
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
-            pstmt.setInt(1, reservationId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapReservation(rs));
-                }
-            }
-        }
-        return Optional.empty();
+    public DatabaseManager() {
+        this.em = emf.createEntityManager();
     }
 
-    public void cancelReservation(int reservationId) throws SQLException {
-        String sql = "DELETE FROM Reservation WHERE id = ?";
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
-            pstmt.setInt(1, reservationId);
-            pstmt.executeUpdate();
+    public boolean isSpaceAvailable(int spaceId, String date, String startTime, String endTime) {
+        try {
+            Long count = em.createQuery(
+                            "SELECT COUNT(r) FROM Reservation r WHERE r.space.id = :spaceId AND r.date = :date AND " +
+                                    "((r.startTime < :endTime AND r.endTime > :startTime))", Long.class)
+                    .setParameter("spaceId", spaceId)
+                    .setParameter("date", date)
+                    .setParameter("startTime", startTime)
+                    .setParameter("endTime", endTime)
+                    .getSingleResult();
+            return count == 0;
+        } catch (Exception e) {
+            throw new PersistenceException("Error checking space availability", e);
         }
     }
 
-    private Reservation mapReservation(ResultSet rs) throws SQLException {
-        CoworkingSpace space = new CoworkingSpace(
-                rs.getInt("space_id"),
-                rs.getInt("type_id"),
-                rs.getDouble("price"),
-                rs.getBoolean("is_available")
-        );
-
-        return new Reservation(
-                rs.getInt("id"),
-                rs.getString("user_name"),
-                rs.getString("date"),
-                rs.getString("start_time"),
-                rs.getString("end_time"),
-                space
-        );
-    }
-
-    public boolean testConnection() {
-        try (Connection conn = getConnection()) {
-            refreshSpaceTypesCache();
-            return conn.isValid(2);
-        } catch (SQLException e) {
-            System.err.println("Ошибка подключения к БД: " + e.getMessage());
-            return false;
+    public void beginTransaction() {
+        if (!em.getTransaction().isActive()) {
+            em.getTransaction().begin();
         }
     }
 
-    static Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            connection = DriverManager.getConnection(DB_URL, USER, PASS);
-        }
-        return connection;
-    }
-
-    public void refreshSpaceTypesCache() throws SQLException {
-        spaceTypesCache = new HashMap<>();
-        String sql = "SELECT id, name FROM CoworkingType";
-        try (Statement stmt = getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                spaceTypesCache.put(rs.getInt("id"), rs.getString("name"));
-            }
-        }
-    }
-
-    public Map<Integer, String> getAllSpaceTypes() throws SQLException {
-        if (spaceTypesCache == null) {
-            refreshSpaceTypesCache();
-        }
-        return spaceTypesCache;
-    }
-
-    public String getTypeNameById(int typeId) throws SQLException {
-        if (spaceTypesCache == null) {
-            refreshSpaceTypesCache();
-        }
-        return spaceTypesCache.getOrDefault(typeId, "Unknown Type");
-    }
-
-    public void addCoworkingSpace(CoworkingSpace space) throws SQLException {
-        String sql = "INSERT INTO CoworkingSpace (type_id, price, is_available) VALUES (?, ?, ?)";
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            pstmt.setInt(1, space.getTypeId());
-            pstmt.setDouble(2, space.getPrice());
-            pstmt.setBoolean(3, space.isAvailable());
-            pstmt.executeUpdate();
-
-            try (ResultSet rs = pstmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    space.setId(rs.getInt(1));
-                }
-            }
-        }
-    }
-
-    public Optional<CoworkingSpace> getCoworkingSpaceById(int id) throws SQLException {
-        String sql = "SELECT id, type_id, price, is_available FROM CoworkingSpace WHERE id = ?";
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
-            pstmt.setInt(1, id);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapCoworkingSpace(rs));
-                }
-            }
-        }
-        return Optional.empty();
-    }
-
-    private CoworkingSpace mapCoworkingSpace(ResultSet rs) throws SQLException {
-        return new CoworkingSpace(
-                rs.getInt("id"),
-                rs.getInt("type_id"),
-                rs.getDouble("price"),
-                rs.getBoolean("is_available")
-        );
-    }
-
-    public List<CoworkingSpace> getAllCoworkingSpaces() throws SQLException {
-        List<CoworkingSpace> spaces = new ArrayList<>();
-        String sql = "SELECT id, type_id, price, is_available FROM CoworkingSpace";
-        try (Statement stmt = getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                spaces.add(mapCoworkingSpace(rs));
-            }
-        }
-        return spaces;
-    }
-
-    public void updateCoworkingSpaceAvailability(int id, boolean isAvailable) throws SQLException {
-        String sql = "UPDATE CoworkingSpace SET is_available = ? WHERE id = ?";
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
-            pstmt.setBoolean(1, isAvailable);
-            pstmt.setInt(2, id);
-            pstmt.executeUpdate();
-        }
-    }
-
-    public void deleteCoworkingSpace(int id) throws SQLException {
-        String sql = "DELETE FROM CoworkingSpace WHERE id = ?";
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
-            pstmt.setInt(1, id);
-            pstmt.executeUpdate();
-        }
-    }
-
-    public List<Reservation> getReservationsForSpace(int spaceId) throws SQLException {
-        List<Reservation> reservations = new ArrayList<>();
-        String sql = "SELECT id, user_name, date, start_time, end_time FROM Reservation WHERE space_id = ?";
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
-            pstmt.setInt(1, spaceId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    Optional<CoworkingSpace> space = getCoworkingSpaceById(spaceId);
-                    if (space.isPresent()) {
-                        reservations.add(new Reservation(
-                                rs.getInt("id"),
-                                rs.getString("user_name"),
-                                rs.getString("date"),
-                                rs.getString("start_time"),
-                                rs.getString("end_time"),
-                                space.get()
-                        ));
-                    }
-                }
-            }
-        }
-        return reservations;
-    }
-
-    public List<Reservation> getReservationsByUser(String userName) throws SQLException {
-        List<Reservation> reservations = new ArrayList<>();
-        String sql = "SELECT r.id, r.user_name, r.date, r.start_time, r.end_time, " +
-                "r.space_id, cs.type_id, cs.price, cs.is_available " +
-                "FROM Reservation r JOIN CoworkingSpace cs ON r.space_id = cs.id " +
-                "WHERE r.user_name = ?";
-        try (PreparedStatement pstmt = getConnection().prepareStatement(sql)) {
-            pstmt.setString(1, userName);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    reservations.add(mapReservation(rs));
-                }
-            }
-        }
-        return reservations;
-    }
-
-    public List<Reservation> getAllReservations() throws SQLException {
-        List<Reservation> reservations = new ArrayList<>();
-        String sql = "SELECT r.id, r.user_name, r.date, r.start_time, r.end_time, " +
-                "cs.id as space_id, cs.type_id, cs.price, cs.is_available " +
-                "FROM Reservation r JOIN CoworkingSpace cs ON r.space_id = cs.id";
-        try (Statement stmt = getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                reservations.add(mapReservation(rs));
-            }
-        }
-        return reservations;
-    }
-
-    public void beginTransaction() throws SQLException {
-        getConnection().setAutoCommit(false);
-    }
-
-    public void commitTransaction() throws SQLException {
-        if (connection != null && !connection.getAutoCommit()) {
-            connection.commit();
-            connection.setAutoCommit(true);
+    public void commitTransaction() {
+        if (em.getTransaction().isActive()) {
+            em.getTransaction().commit();
         }
     }
 
     public void rollbackTransaction() {
-        try {
-            if (connection != null && !connection.getAutoCommit()) {
-                connection.rollback();
-                connection.setAutoCommit(true);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        if (em.getTransaction().isActive()) {
+            em.getTransaction().rollback();
         }
     }
 
-    public void closeConnection() {
+    public void addReservation(Reservation reservation) {
+        executeInTransaction(() -> em.persist(reservation));
+    }
+
+    public Optional<Reservation> getReservationById(int reservationId) {
         try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
+            return Optional.ofNullable(em.find(Reservation.class, reservationId));
+        } catch (Exception e) {
+            throw new PersistenceException("Error getting reservation by ID", e);
+        }
+    }
+
+    public void cancelReservation(int reservationId) {
+        executeInTransaction(() -> {
+            Reservation reservation = em.find(Reservation.class, reservationId);
+            if (reservation != null) {
+                em.remove(reservation);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        });
+    }
+
+    public void refreshSpaceTypesCache() {
+        try {
+            List<CoworkingType> types = em.createQuery("SELECT t FROM CoworkingType t", CoworkingType.class)
+                    .getResultList();
+            spaceTypesCache.clear();
+            spaceTypesCache.putAll(types.stream()
+                    .collect(Collectors.toMap(CoworkingType::getId, CoworkingType::getName)));
+        } catch (Exception e) {
+            throw new PersistenceException("Error refreshing space types cache", e);
+        }
+    }
+
+    public Map<Integer, String> getAllSpaceTypes() {
+        if (spaceTypesCache.isEmpty()) {
+            refreshSpaceTypesCache();
+        }
+        return new HashMap<>(spaceTypesCache);
+    }
+
+    public String getTypeNameById(int typeId) {
+        return spaceTypesCache.getOrDefault(typeId, "Unknown Type");
+    }
+
+    public void addCoworkingSpace(CoworkingSpace space) {
+        executeInTransaction(() -> {
+            em.persist(space);
+            spacesCache.put(space.getId(), space);
+        });
+    }
+
+    public Optional<CoworkingSpace> getCoworkingSpaceById(int id) {
+        try {
+            return Optional.ofNullable(spacesCache.computeIfAbsent(id,
+                    k -> em.find(CoworkingSpace.class, id)));
+        } catch (Exception e) {
+            throw new PersistenceException("Error getting coworking space by ID", e);
+        }
+    }
+
+    public List<CoworkingSpace> getAllCoworkingSpaces() {
+        try {
+            return em.createQuery("SELECT s FROM CoworkingSpace s", CoworkingSpace.class)
+                    .getResultList();
+        } catch (Exception e) {
+            throw new PersistenceException("Error getting all coworking spaces", e);
+        }
+    }
+
+    public void updateCoworkingSpaceAvailability(int id, boolean isAvailable) {
+        executeInTransaction(() -> {
+            CoworkingSpace space = em.find(CoworkingSpace.class, id);
+            if (space != null) {
+                space.setAvailable(isAvailable);
+                spacesCache.put(id, space);
+            }
+        });
+    }
+
+    public void deleteCoworkingSpace(int id) {
+        executeInTransaction(() -> {
+            CoworkingSpace space = em.find(CoworkingSpace.class, id);
+            if (space != null) {
+                em.remove(space);
+                spacesCache.remove(id);
+            }
+        });
+    }
+
+    public List<Reservation> getReservationsForSpace(int spaceId) {
+        try {
+            return em.createQuery("SELECT r FROM Reservation r WHERE r.space.id = :spaceId", Reservation.class)
+                    .setParameter("spaceId", spaceId)
+                    .getResultList();
+        } catch (Exception e) {
+            throw new PersistenceException("Error getting reservations for space", e);
+        }
+    }
+
+    public List<Reservation> getReservationsByUser(String userName) {
+        try {
+            return em.createQuery("SELECT r FROM Reservation r WHERE r.userName = :userName", Reservation.class)
+                    .setParameter("userName", userName)
+                    .getResultList();
+        } catch (Exception e) {
+            throw new PersistenceException("Error getting reservations by user", e);
+        }
+    }
+
+    public List<Reservation> getAllReservations() {
+        try {
+            return em.createQuery("SELECT r FROM Reservation r", Reservation.class)
+                    .getResultList();
+        } catch (Exception e) {
+            throw new PersistenceException("Error getting all reservations", e);
+        }
+    }
+
+    public boolean testConnection() {
+        try {
+            return em.createQuery("SELECT 1", Integer.class).getSingleResult() == 1;
+        } catch (Exception e) {
+            System.err.println("Database connection error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void executeInTransaction(Runnable operation) {
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            operation.run();
+            tx.commit();
+        } catch (Exception e) {
+            if (tx.isActive()) {
+                tx.rollback();
+            }
+            throw new PersistenceException("Transaction failed", e);
+        }
+    }
+
+    @Override
+    public void close() {
+        if (em != null && em.isOpen()) {
+            em.close();
+        }
+    }
+
+    public static void closeEntityManagerFactory() {
+        if (emf != null && emf.isOpen()) {
+            emf.close();
+        }
+    }
+    public static void shutdown() {
+        if (emf != null && emf.isOpen()) {
+            emf.close();
         }
     }
 }

@@ -4,7 +4,6 @@ import Data.CoworkingSpace;
 import Data.DatabaseManager;
 import Data.Reservation;
 import Exceptions.ReservationException;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,16 +47,15 @@ public class ReservationService {
 
             Optional<Reservation> reservationOpt = dbManager.getReservationById(reservationId);
             if (reservationOpt.isEmpty()) {
-                throw new ReservationException("reservation with ID " + reservationId + " не найдено");
+                throw new ReservationException("Reservation with ID " + reservationId + " not found");
             }
 
             Reservation reservation = reservationOpt.get();
             dbManager.cancelReservation(reservationId);
-
             dbManager.updateCoworkingSpaceAvailability(reservation.getSpace().getId(), true);
 
             dbManager.commitTransaction();
-        } catch (SQLException e) {
+        } catch (Exception e) {
             dbManager.rollbackTransaction();
             throw new ReservationException("Couldn't cancel booking: " + e.getMessage(), e);
         }
@@ -66,36 +64,39 @@ public class ReservationService {
     public List<Reservation> getReservationsByUser(String userName) throws ReservationException {
         try {
             return dbManager.getReservationsByUser(userName);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new ReservationException("Error when receiving user's bookings", e);
         }
     }
 
-    public void displayAllReservations() {
+    public List<Reservation> getAllReservations() throws ReservationException {
         try {
-            List<Reservation> reservations = dbManager.getAllReservations();
-            if (reservations.isEmpty()) {
-                System.out.println("There are no active bookings");
-                return;
-            }
+            return dbManager.getAllReservations();
+        } catch (Exception e) {
+            throw new ReservationException("Error getting all reservations", e);
+        }
+    }
 
-            System.out.println("\nReservation:");
-            System.out.println("-----------------------");
-            reservations.forEach(reservation -> {
-                System.out.println("ID: " + reservation.getId());
-                System.out.println("User: " + reservation.getUserName());
-                System.out.println("Data: " + reservation.getDate());
-                System.out.println("Time: " + reservation.getStartTime() + " - " + reservation.getEndTime());
-                System.out.println("The ID space: " + reservation.getSpace().getId());
-                try {
-                    System.out.println("Type: " + reservation.getSpace().getType().getName());
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-                System.out.println("-----------------------");
-            });
-        } catch (SQLException e) {
-            System.err.println("Error when receiving the booking list: " + e.getMessage());
+    public void displayAllReservations() throws ReservationException {
+        List<Reservation> reservations = getAllReservations();
+        if (reservations.isEmpty()) {
+            System.out.println("There are no active bookings");
+            return;
+        }
+
+        System.out.println("\nReservations:");
+        System.out.println("ID\tUser\t\tDate\t\tTime\t\tSpace ID\tType");
+        System.out.println("--------------------------------------------------------------");
+
+        for (Reservation reservation : reservations) {
+            System.out.printf("%d\t%-10s\t%s\t%s-%s\t%d\t\t%s\n",
+                    reservation.getId(),
+                    reservation.getUserName(),
+                    reservation.getDate(),
+                    reservation.getStartTime(),
+                    reservation.getEndTime(),
+                    reservation.getSpace().getId(),
+                    reservation.getSpace().getType().getName());
         }
     }
 }

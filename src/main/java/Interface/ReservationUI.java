@@ -73,7 +73,25 @@ public class ReservationUI {
 
     public void displayAllReservations() {
         try {
-            reservationService.displayAllReservations();
+            List<Reservation> reservations = reservationService.getAllReservations();
+            if (reservations.isEmpty()) {
+                System.out.println("No reservations found.");
+                return;
+            }
+
+            System.out.println("\nAll Reservations:");
+            System.out.println("ID\tUser\t\tDate\t\tTime\t\tSpace ID");
+            System.out.println("--------------------------------------------------");
+
+            for (Reservation reservation : reservations) {
+                System.out.printf("%d\t%-10s\t%s\t%s-%s\t%d\n",
+                        reservation.getId(),
+                        reservation.getUserName(),
+                        reservation.getDate(),
+                        reservation.getStartTime(),
+                        reservation.getEndTime(),
+                        reservation.getSpace().getId());
+            }
         } catch (Exception e) {
             System.err.println("Error displaying reservations: " + e.getMessage());
         }
