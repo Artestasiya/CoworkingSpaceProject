@@ -1,6 +1,7 @@
 package Data;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
