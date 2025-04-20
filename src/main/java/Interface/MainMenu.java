@@ -1,29 +1,20 @@
 package Interface;
 
-import Data.DatabaseManager;
-import Service.CoworkingSpaceService;
-import Service.ReservationService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import java.util.Scanner;
 
+@Component
 public class MainMenu {
     private final CoworkingSpaceUI spaceUI;
     private final ReservationUI reservationUI;
     private final Scanner scanner;
-    private final DatabaseManager dbManager;
 
-    public MainMenu() {
-        this.scanner = new Scanner(System.in);
-        this.dbManager = new DatabaseManager();
-        if (!dbManager.testConnection()) {
-            System.err.println("Couldn't connect to the database!");
-            System.exit(1);
-        }
-
-        CoworkingSpaceService spaceService = new CoworkingSpaceService(dbManager);
-        ReservationService reservationService = new ReservationService(dbManager, spaceService);
-
-        this.spaceUI = new CoworkingSpaceUI(spaceService, dbManager, scanner);
-        this.reservationUI = new ReservationUI(reservationService, scanner);
+    @Autowired
+    public MainMenu(CoworkingSpaceUI spaceUI, ReservationUI reservationUI, Scanner scanner) {
+        this.spaceUI = spaceUI;
+        this.reservationUI = reservationUI;
+        this.scanner = scanner;
     }
 
     public void showMainMenu() {
@@ -39,21 +30,17 @@ public class MainMenu {
                 scanner.nextLine();
 
                 switch (role) {
-                    case 1:
-                        showAdminMenu();
-                        break;
-                    case 2:
-                        showUserMenu();
-                        break;
-                    case 3:
+                    case 1 -> showAdminMenu();
+                    case 2 -> showUserMenu();
+                    case 3 -> {
                         System.out.println("Goodbye!");
                         return;
-                    default:
-                        System.out.println("Invalid choice, try again");
+                    }
+                    default -> System.out.println("Invalid choice, try again");
                 }
             }
         } finally {
-            dbManager.close();
+            scanner.close();
         }
     }
 
@@ -72,25 +59,13 @@ public class MainMenu {
             scanner.nextLine();
 
             switch (choice) {
-                case 1:
-                    spaceUI.addSpace();
-                    break;
-                case 2:
-                    spaceUI.removeSpace();
-                    break;
-                case 3:
-                    reservationUI.displayAllReservations();
-                    break;
-                case 4:
-                    spaceUI.displayAllSpaces();
-                    break;
-                case 5:
-                    spaceUI.displayAvailableSpaces();
-                    break;
-                case 6:
-                    return;
-                default:
-                    System.out.println("Invalid choice, try again");
+                case 1 -> spaceUI.addSpace();
+                case 2 -> spaceUI.removeSpace();
+                case 3 -> reservationUI.displayAllReservations();
+                case 4 -> spaceUI.displayAllSpaces();
+                case 5 -> spaceUI.displayAvailableSpaces();
+                case 6 -> { return; }
+                default -> System.out.println("Invalid choice, try again");
             }
         }
     }
@@ -109,22 +84,12 @@ public class MainMenu {
             scanner.nextLine();
 
             switch (choice) {
-                case 1:
-                    spaceUI.displayAvailableSpaces();
-                    break;
-                case 2:
-                    reservationUI.addReservation();
-                    break;
-                case 3:
-                    reservationUI.cancelReservation();
-                    break;
-                case 4:
-                    spaceUI.displayAllSpaces();
-                    break;
-                case 5:
-                    return;
-                default:
-                    System.out.println("Invalid choice, try again");
+                case 1 -> spaceUI.displayAvailableSpaces();
+                case 2 -> reservationUI.addReservation();
+                case 3 -> reservationUI.cancelReservation();
+                case 4 -> spaceUI.displayAllSpaces();
+                case 5 -> { return; }
+                default -> System.out.println("Invalid choice, try again");
             }
         }
     }

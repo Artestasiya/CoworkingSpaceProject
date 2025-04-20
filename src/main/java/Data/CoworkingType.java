@@ -1,6 +1,8 @@
 package Data;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "CoworkingType")
@@ -12,8 +14,10 @@ public class CoworkingType {
     @Column(nullable = false, unique = true)
     private String name;
 
-    public CoworkingType() {
-    }
+    @OneToMany(mappedBy = "type", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CoworkingSpace> spaces = new ArrayList<>();
+
+    public CoworkingType() {}
 
     public CoworkingType(String name) {
         this.name = name;
@@ -31,8 +35,16 @@ public class CoworkingType {
         this.name = name;
     }
 
-    @Override
-    public String toString() {
-        return name;
+    public List<CoworkingSpace> getSpaces() {
+        return spaces;
+    }
+
+    public void addSpace(CoworkingSpace space) {
+        spaces.add(space);
+        space.setType(this);
+    }
+
+    public void setId(int typeId) {
+        this.id = typeId;
     }
 }

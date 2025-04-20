@@ -1,46 +1,36 @@
 package Data;
 
 import jakarta.persistence.*;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class DatabaseManager implements AutoCloseable {
-    private static EntityManagerFactory emf;
     private final EntityManager em;
     private final Map<Integer, String> spaceTypesCache = new ConcurrentHashMap<>();
     private final Map<Integer, CoworkingSpace> spacesCache = new ConcurrentHashMap<>();
-    static {
+
+    public DatabaseManager(EntityManagerFactory emf) {
+        this.em = emf.createEntityManager();
+        testConnection();
+    }
+
+    private void testConnection() {
         try {
-            System.out.println("Creating EMF for: CoworkingPU");
-            // Add some debug logging for connection properties
-            Map<String, String> properties = new HashMap<>();
-            properties.put("javax.persistence.jdbc.url",
-                    "jdbc:sqlserver://localhost:1433;databaseName=CoworkingDB;encrypt=true;trustServerCertificate=true");
-            properties.put("javax.persistence.jdbc.user", "Admin");
-            properties.put("javax.persistence.jdbc.password", "Admin");
-
-            emf = Persistence.createEntityManagerFactory("CoworkingPU", properties);
-            System.out.println("EMF created successfully!");
-
-            // Test connection immediately
-            EntityManager testEm = emf.createEntityManager();
-            try {
-                boolean connected = testEm.createQuery("SELECT 1", Integer.class).getSingleResult() == 1;
-                System.out.println("Database connection test: " + (connected ? "SUCCESS" : "FAILED"));
-            } finally {
-                testEm.close();
-            }
+            boolean connected = em.createQuery("SELECT 1", Integer.class).getSingleResult() == 1;
+            System.out.println("Database connection test: " + (connected ? "SUCCESS" : "FAILED"));
         } catch (Exception e) {
-            System.err.println("EMF creation failed: " + e.getMessage());
-            e.printStackTrace();
-            throw new ExceptionInInitializerError(e);
+            System.err.println("Database connection error: " + e.getMessage());
+            throw new PersistenceException("Failed to connect to database", e);
         }
     }
 
-    public DatabaseManager() {
-        this.em = emf.createEntityManager();
+    public Optional<CoworkingType> getCoworkingTypeById(int typeId) {
+        try {
+            return Optional.ofNullable(em.find(CoworkingType.class, typeId));
+        } catch (Exception e) {
+            throw new PersistenceException("Error getting coworking type by ID", e);
+        }
     }
 
     public boolean isSpaceAvailable(int spaceId, String date, String startTime, String endTime) {
@@ -195,15 +185,6 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    public boolean testConnection() {
-        try {
-            return em.createQuery("SELECT 1", Integer.class).getSingleResult() == 1;
-        } catch (Exception e) {
-            System.err.println("Database connection error: " + e.getMessage());
-            return false;
-        }
-    }
-
     private void executeInTransaction(Runnable operation) {
         EntityTransaction tx = em.getTransaction();
         try {
@@ -222,17 +203,6 @@ public class DatabaseManager implements AutoCloseable {
     public void close() {
         if (em != null && em.isOpen()) {
             em.close();
-        }
-    }
-
-    public static void closeEntityManagerFactory() {
-        if (emf != null && emf.isOpen()) {
-            emf.close();
-        }
-    }
-    public static void shutdown() {
-        if (emf != null && emf.isOpen()) {
-            emf.close();
         }
     }
 }

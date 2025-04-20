@@ -4,9 +4,11 @@ import Data.CoworkingSpace;
 import Data.DatabaseManager;
 import Data.Reservation;
 import Exceptions.ReservationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-import java.util.Optional;
 
+@Service
 public class ReservationService {
     private final DatabaseManager dbManager;
     private final CoworkingSpaceService spaceService;
@@ -16,56 +18,59 @@ public class ReservationService {
         this.spaceService = spaceService;
     }
 
+    @Transactional
     public void addReservation(String userName, String date, String startTime, String endTime, int spaceId)
             throws ReservationException {
         try {
-            dbManager.beginTransaction();
+            // Валидация параметров
+            validateReservationParameters(userName, date, startTime, endTime);
 
-            Optional<CoworkingSpace> spaceOpt = spaceService.getSpaceById(spaceId);
-            if (spaceOpt.isEmpty() || !spaceOpt.get().isAvailable()) {
-                throw new ReservationException("The space is unavailable or does not exist");
+            CoworkingSpace space = spaceService.getSpaceById(spaceId)
+                    .orElseThrow(() -> new ReservationException("Space not found: " + spaceId));
+
+            if (!space.isAvailable()) {
+                throw new ReservationException("Space " + spaceId + " is not available");
             }
 
             if (!dbManager.isSpaceAvailable(spaceId, date, startTime, endTime)) {
-                throw new ReservationException("The space is already occupied at the specified time");
+                throw new ReservationException("Space is already booked for this time slot");
             }
 
-            Reservation reservation = new Reservation(0, userName, date, startTime, endTime, spaceOpt.get());
+            Reservation reservation = new Reservation(userName, date, startTime, endTime, space);
             dbManager.addReservation(reservation);
             dbManager.updateCoworkingSpaceAvailability(spaceId, false);
 
-            dbManager.commitTransaction();
+        } catch (ReservationException e) {
+            throw e;
         } catch (Exception e) {
-            dbManager.rollbackTransaction();
-            throw new ReservationException("Couldn't create a reservation: " + e.getMessage(), e);
+            throw new ReservationException("Failed to create reservation", e);
         }
     }
 
+    @Transactional
     public void cancelReservation(int reservationId) throws ReservationException {
         try {
-            dbManager.beginTransaction();
+            Reservation reservation = dbManager.getReservationById(reservationId)
+                    .orElseThrow(() -> new ReservationException("Reservation not found: " + reservationId));
 
-            Optional<Reservation> reservationOpt = dbManager.getReservationById(reservationId);
-            if (reservationOpt.isEmpty()) {
-                throw new ReservationException("Reservation with ID " + reservationId + " not found");
-            }
-
-            Reservation reservation = reservationOpt.get();
             dbManager.cancelReservation(reservationId);
             dbManager.updateCoworkingSpaceAvailability(reservation.getSpace().getId(), true);
 
-            dbManager.commitTransaction();
+        } catch (ReservationException e) {
+            throw e;
         } catch (Exception e) {
-            dbManager.rollbackTransaction();
-            throw new ReservationException("Couldn't cancel booking: " + e.getMessage(), e);
+            throw new ReservationException("Failed to cancel reservation", e);
         }
     }
 
     public List<Reservation> getReservationsByUser(String userName) throws ReservationException {
         try {
+            if (userName == null || userName.trim().isEmpty()) {
+                throw new ReservationException("Invalid user name");
+            }
             return dbManager.getReservationsByUser(userName);
         } catch (Exception e) {
-            throw new ReservationException("Error when receiving user's bookings", e);
+            throw new ReservationException("Failed to get user reservations", e);
         }
     }
 
@@ -73,30 +78,16 @@ public class ReservationService {
         try {
             return dbManager.getAllReservations();
         } catch (Exception e) {
-            throw new ReservationException("Error getting all reservations", e);
+            throw new ReservationException("Failed to get all reservations", e);
         }
     }
 
-    public void displayAllReservations() throws ReservationException {
-        List<Reservation> reservations = getAllReservations();
-        if (reservations.isEmpty()) {
-            System.out.println("There are no active bookings");
-            return;
+    private void validateReservationParameters(String userName, String date,
+                                               String startTime, String endTime)
+            throws ReservationException {
+        if (userName == null || userName.trim().isEmpty()) {
+            throw new ReservationException("User name cannot be empty");
         }
-
-        System.out.println("\nReservations:");
-        System.out.println("ID\tUser\t\tDate\t\tTime\t\tSpace ID\tType");
-        System.out.println("--------------------------------------------------------------");
-
-        for (Reservation reservation : reservations) {
-            System.out.printf("%d\t%-10s\t%s\t%s-%s\t%d\t\t%s\n",
-                    reservation.getId(),
-                    reservation.getUserName(),
-                    reservation.getDate(),
-                    reservation.getStartTime(),
-                    reservation.getEndTime(),
-                    reservation.getSpace().getId(),
-                    reservation.getSpace().getType().getName());
-        }
+        // Добавьте дополнительные проверки для date, startTime, endTime
     }
 }

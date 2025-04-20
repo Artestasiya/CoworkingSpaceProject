@@ -29,20 +29,17 @@ public class Reservation implements Serializable {
     @JoinColumn(name = "space_id", nullable = false)
     private CoworkingSpace space;
 
-    public Reservation() {
-    }
+    public Reservation() {}
 
     public Reservation(String userName, String date, String startTime,
                        String endTime, CoworkingSpace space) {
-        this.userName = Objects.requireNonNull(userName, "User name cannot be null");
-        this.date = Objects.requireNonNull(date, "Date cannot be null");
-        this.startTime = Objects.requireNonNull(startTime, "Start time cannot be null");
-        this.endTime = Objects.requireNonNull(endTime, "End time cannot be null");
-        this.space = Objects.requireNonNull(space, "Space cannot be null");
+        this.userName = Objects.requireNonNull(userName);
+        this.date = Objects.requireNonNull(date);
+        this.startTime = Objects.requireNonNull(startTime);
+        this.endTime = Objects.requireNonNull(endTime);
+        this.space = Objects.requireNonNull(space);
     }
 
-    public Reservation(int i, String userName, String date, String startTime, String endTime, CoworkingSpace coworkingSpace) {
-    }
 
     public int getId() {
         return id;
@@ -90,30 +87,5 @@ public class Reservation implements Serializable {
 
     public void setSpace(CoworkingSpace space) {
         this.space = space;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Reservation that = (Reservation) o;
-        return id == that.id &&
-                Objects.equals(userName, that.userName) &&
-                Objects.equals(date, that.date) &&
-                Objects.equals(startTime, that.startTime) &&
-                Objects.equals(endTime, that.endTime) &&
-                Objects.equals(space, that.space);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, userName, date, startTime, endTime, space);
-    }
-
-    @Override
-    public String toString() {
-        return String.format(
-                "Reservation[ID: %d, User: %s, Date: %s, Time: %s-%s, Space: %s]",
-                id, userName, date, startTime, endTime, space);
     }
 }

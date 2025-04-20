@@ -2,13 +2,17 @@ package Interface;
 
 import Data.Reservation;
 import Service.ReservationService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Scanner;
 
+@Component
 public class ReservationUI {
     private final ReservationService reservationService;
     private final Scanner scanner;
 
+    @Autowired
     public ReservationUI(ReservationService reservationService, Scanner scanner) {
         this.reservationService = reservationService;
         this.scanner = scanner;
@@ -28,7 +32,7 @@ public class ReservationUI {
             System.out.print("Enter end time (HH:MM): ");
             String endTime = scanner.nextLine();
 
-            System.out.print("Enter the ID of the space you want to book: ");
+            System.out.print("Enter space ID: ");
             int spaceId = scanner.nextInt();
             scanner.nextLine();
 

@@ -3,49 +3,56 @@ package Service;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class CustomClassLoader extends ClassLoader {
-
-    private final String classPath;
+    private final Path classPath;
 
     public CustomClassLoader(String classPath) {
-        this.classPath = classPath;
+        super(); // Используем родительский ClassLoader
+        this.classPath = Paths.get(classPath).toAbsolutePath().normalize();
     }
 
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        Class<?> loadedClass = findLoadedClass(name);
-        if (loadedClass != null) {
-            return loadedClass;
-        }
+        synchronized (getClassLoadingLock(name)) {
+            // 1. Проверяем уже загруженные классы
+            Class<?> loadedClass = findLoadedClass(name);
+            if (loadedClass != null) {
+                return loadedClass;
+            }
 
-        try {
-            return super.loadClass(name, resolve);
-        } catch (ClassNotFoundException e) {
-            return findClass(name);
+            // 2. Пытаемся загрузить через родительский ClassLoader (стандартные классы)
+            try {
+                return super.loadClass(name, resolve);
+            } catch (ClassNotFoundException e) {
+                // 3. Если не найден - пробуем наш кастомный загрузчик
+                return findClass(name);
+            }
         }
     }
 
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
-        String path = classPath + File.separatorChar + name.replace('.', File.separatorChar) + ".class";
-        byte[] classData = loadClassData(path);
+        try {
+            String filePath = name.replace('.', File.separatorChar) + ".class";
+            Path fullPath = classPath.resolve(filePath).normalize();
 
-        if (classData == null) {
-            throw new ClassNotFoundException("Class " + name + " not found at " + path);
+            // Проверка безопасности пути
+            if (!fullPath.startsWith(classPath)) {
+                throw new SecurityException("Attempt to access path outside of classpath directory");
+            }
+
+            byte[] classData = loadClassData(fullPath);
+            return defineClass(name, classData, 0, classData.length);
+        } catch (Exception e) {
+            throw new ClassNotFoundException("Failed to load class " + name, e);
         }
-
-        return defineClass(name, classData, 0, classData.length);
     }
 
-    private byte[] loadClassData(String path) {
-        try (FileInputStream fis = new FileInputStream(path)) {
-            byte[] buffer = new byte[fis.available()];
-            fis.read(buffer);
-            return buffer;
-        } catch (IOException e) {
-            System.err.println("Error loading class data: " + e.getMessage());
-            return null;
-        }
+    private byte[] loadClassData(Path path) throws IOException {
+        return Files.readAllBytes(path);
     }
 }

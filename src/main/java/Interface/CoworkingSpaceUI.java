@@ -5,17 +5,21 @@ import Data.DatabaseManager;
 import Exceptions.CoworkingSpaceException;
 import Exceptions.InvalidAvailabilityInputException;
 import Service.CoworkingSpaceService;
-import java.util.InputMismatchException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 
+@Component
 public class CoworkingSpaceUI {
     private final CoworkingSpaceService spaceService;
     private final DatabaseManager dbManager;
     private final Scanner scanner;
 
-    public CoworkingSpaceUI(CoworkingSpaceService spaceService, DatabaseManager dbManager, Scanner scanner) {
+    @Autowired
+    public CoworkingSpaceUI(CoworkingSpaceService spaceService,
+                            DatabaseManager dbManager,
+                            Scanner scanner) {
         this.spaceService = spaceService;
         this.dbManager = dbManager;
         this.scanner = scanner;
@@ -23,78 +27,66 @@ public class CoworkingSpaceUI {
 
     public void addSpace() {
         try {
-            System.out.println("Enter space details:");
-            scanner.nextLine();
-
-            Map<Integer, String> spaceTypes = dbManager.getAllSpaceTypes();
-            System.out.println("Available types:");
-            spaceTypes.forEach((id, name) -> System.out.println(id + ": " + name));
-
+            System.out.println("\n=== Add New Coworking Space ===");
             System.out.print("Enter type ID: ");
             int typeId = scanner.nextInt();
 
-            if (!spaceTypes.containsKey(typeId)) {
-                System.err.println("Error: Invalid type ID");
-                return;
-            }
-
-            System.out.print("Price: ");
+            System.out.print("Enter price: ");
             double price = scanner.nextDouble();
 
             System.out.print("Is available (true/false): ");
-            String availabilityInput = scanner.next().toLowerCase();
-            boolean isAvailable = availabilityInput.equals("true");
-
-            if (!availabilityInput.equals("true") && !availabilityInput.equals("false")) {
-                throw new InvalidAvailabilityInputException("Invalid input for availability. Please enter 'true' or 'false'.");
-            }
+            boolean isAvailable = scanner.nextBoolean();
 
             spaceService.addSpace(typeId, price, isAvailable);
             System.out.println("Space added successfully!");
+
         } catch (CoworkingSpaceException e) {
-            System.err.println("Error adding space: " + e.getMessage());
-        } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("System error: " + e.getMessage());
+        } finally {
+            scanner.nextLine(); // Очистка буфера
         }
     }
 
     public void displayAvailableSpaces() {
         try {
-            Map<Integer, String> spaceTypes = dbManager.getAllSpaceTypes();
             List<CoworkingSpace> spaces = spaceService.getAvailableSpaces();
 
-            System.out.println("\nAvailable Spaces:");
-            System.out.println("ID\tType\t\tPrice");
-            System.out.println("------------------------------");
+            System.out.println("\n=== Available Spaces ===");
+            System.out.printf("%-5s %-20s %-10s %-10s%n", "ID", "Type", "Price", "Status");
+            System.out.println("--------------------------------------------");
 
             for (CoworkingSpace space : spaces) {
-                String typeName = spaceTypes.getOrDefault(space.getTypeId(), "Unknown");
-                System.out.printf("%d\t%-15s\t%.2f\n",
+                String typeName = space.getType() != null ? space.getType().getName() : "Unknown";
+                System.out.printf("%-5d %-20s %-10.2f %-10s%n",
                         space.getId(),
                         typeName,
-                        space.getPrice());
+                        space.getPrice(),
+                        space.isAvailable() ? "Available" : "Booked");
             }
         } catch (Exception e) {
-            System.err.println("Error displaying available spaces: " + e.getMessage());
+            System.err.println("Error displaying spaces: " + e.getMessage());
         }
     }
 
     public void displayAllSpaces() {
         try {
-            Map<Integer, String> spaceTypes = dbManager.getAllSpaceTypes();
             List<CoworkingSpace> spaces = spaceService.getAllSpaces();
 
-            System.out.println("\nAll Coworking Spaces:");
-            System.out.println("ID\tType\t\tPrice\tAvailable");
-            System.out.println("----------------------------------");
+            System.out.println("\n=== All Coworking Spaces ===");
+            System.out.printf("%-5s %-20s %-10s %-10s %-15s%n",
+                    "ID", "Type", "Price", "Status", "Reservations");
+            System.out.println("-------------------------------------------------------");
 
             for (CoworkingSpace space : spaces) {
-                String typeName = spaceTypes.getOrDefault(space.getTypeId(), "Unknown");
-                System.out.printf("%d\t%-15s\t%.2f\t%s\n",
+                String typeName = space.getType() != null ? space.getType().getName() : "Unknown";
+                System.out.printf("%-5d %-20s %-10.2f %-10s %-15d%n",
                         space.getId(),
                         typeName,
                         space.getPrice(),
-                        space.isAvailable() ? "Yes" : "No");
+                        space.isAvailable() ? "Available" : "Booked",
+                        space.getReservations().size());
             }
         } catch (Exception e) {
             System.err.println("Error displaying spaces: " + e.getMessage());
@@ -105,17 +97,21 @@ public class CoworkingSpaceUI {
         try {
             System.out.print("\nEnter space ID to remove: ");
             int id = scanner.nextInt();
-            scanner.nextLine();
-            System.out.print("Are you sure you want to remove space " + id + "? (y/n): ");
-            if (scanner.nextLine().equalsIgnoreCase("y")) {
+            scanner.nextLine(); // Очистка буфера
+
+            System.out.print("Are you sure? (y/n): ");
+            String confirmation = scanner.nextLine();
+
+            if (confirmation.equalsIgnoreCase("y")) {
                 spaceService.removeSpace(id);
-                System.out.println("Space successfully removed!");
+                System.out.println("Space removed successfully!");
+            } else {
+                System.out.println("Operation canceled.");
             }
-        } catch (InputMismatchException e) {
-            System.err.println("Error: Please enter a valid number for space ID");
-            scanner.nextLine();
         } catch (CoworkingSpaceException e) {
             System.err.println("Error: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("System error: " + e.getMessage());
         }
     }
 }

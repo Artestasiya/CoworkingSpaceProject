@@ -1,19 +1,10 @@
-import Interface.MainMenu;
-import Service.CustomClassLoader;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import config.AppConfig;
 
 public class Main {
     public static void main(String[] args) {
-        CustomClassLoader customClassLoader = new CustomClassLoader("classes/");
-
-        try {
-            Class<?> loadedClass = customClassLoader.loadClass("Data.CoworkingSpace");
-            System.out.println("Class loaded: " + loadedClass.getName());
-        } catch (ClassNotFoundException e) {
-            System.err.println("Failed to load class: " + e.getMessage());
-            e.printStackTrace();
+        try (var context = new AnnotationConfigApplicationContext(AppConfig.class)) {
+            context.getBean(Interface.MainMenu.class).showMainMenu();
         }
-
-        MainMenu mainMenu = new MainMenu();
-        mainMenu.showMainMenu();
     }
 }
