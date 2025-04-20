@@ -11,24 +11,21 @@ public class CustomClassLoader extends ClassLoader {
     private final Path classPath;
 
     public CustomClassLoader(String classPath) {
-        super(); // Используем родительский ClassLoader
+        super();
         this.classPath = Paths.get(classPath).toAbsolutePath().normalize();
     }
 
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         synchronized (getClassLoadingLock(name)) {
-            // 1. Проверяем уже загруженные классы
             Class<?> loadedClass = findLoadedClass(name);
             if (loadedClass != null) {
                 return loadedClass;
             }
 
-            // 2. Пытаемся загрузить через родительский ClassLoader (стандартные классы)
             try {
                 return super.loadClass(name, resolve);
             } catch (ClassNotFoundException e) {
-                // 3. Если не найден - пробуем наш кастомный загрузчик
                 return findClass(name);
             }
         }
@@ -40,7 +37,6 @@ public class CustomClassLoader extends ClassLoader {
             String filePath = name.replace('.', File.separatorChar) + ".class";
             Path fullPath = classPath.resolve(filePath).normalize();
 
-            // Проверка безопасности пути
             if (!fullPath.startsWith(classPath)) {
                 throw new SecurityException("Attempt to access path outside of classpath directory");
             }

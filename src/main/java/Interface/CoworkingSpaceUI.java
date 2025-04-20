@@ -45,7 +45,7 @@ public class CoworkingSpaceUI {
         } catch (Exception e) {
             System.err.println("System error: " + e.getMessage());
         } finally {
-            scanner.nextLine(); // Очистка буфера
+            scanner.nextLine();
         }
     }
 
@@ -97,7 +97,7 @@ public class CoworkingSpaceUI {
         try {
             System.out.print("\nEnter space ID to remove: ");
             int id = scanner.nextInt();
-            scanner.nextLine(); // Очистка буфера
+            scanner.nextLine();
 
             System.out.print("Are you sure? (y/n): ");
             String confirmation = scanner.nextLine();

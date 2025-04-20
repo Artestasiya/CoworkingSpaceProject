@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.Scanner;
 
 @Configuration
-@ComponentScan(basePackages = {"Service", "Interface"}) // Сканируем оба пакета
+@ComponentScan(basePackages = {"Service", "Interface"})
 public class AppConfig {
 
     @Bean

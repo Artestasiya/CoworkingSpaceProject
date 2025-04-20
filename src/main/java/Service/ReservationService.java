@@ -22,7 +22,6 @@ public class ReservationService {
     public void addReservation(String userName, String date, String startTime, String endTime, int spaceId)
             throws ReservationException {
         try {
-            // Валидация параметров
             validateReservationParameters(userName, date, startTime, endTime);
 
             CoworkingSpace space = spaceService.getSpaceById(spaceId)
@@ -88,6 +87,5 @@ public class ReservationService {
         if (userName == null || userName.trim().isEmpty()) {
             throw new ReservationException("User name cannot be empty");
         }
-        // Добавьте дополнительные проверки для date, startTime, endTime
     }
 }
