@@ -1,0 +1,103 @@
+package Interface;
+
+import Data.Reservation;
+import Service.ReservationService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import java.util.List;
+import java.util.Scanner;
+
+@Component
+public class ReservationUI {
+    private final ReservationService reservationService;
+    private final Scanner scanner;
+
+    @Autowired
+    public ReservationUI(ReservationService reservationService, Scanner scanner) {
+        this.reservationService = reservationService;
+        this.scanner = scanner;
+    }
+
+    public void addReservation() {
+        try {
+            System.out.print("Enter your name: ");
+            String userName = scanner.nextLine();
+
+            System.out.print("Enter date (YYYY-MM-DD): ");
+            String date = scanner.nextLine();
+
+            System.out.print("Enter start time (HH:MM): ");
+            String startTime = scanner.nextLine();
+
+            System.out.print("Enter end time (HH:MM): ");
+            String endTime = scanner.nextLine();
+
+            System.out.print("Enter space ID: ");
+            int spaceId = scanner.nextInt();
+            scanner.nextLine();
+
+            reservationService.addReservation(userName, date, startTime, endTime, spaceId);
+            System.out.println("Reservation added successfully!");
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void cancelReservation() {
+        try {
+            System.out.print("Enter your name: ");
+            String userName = scanner.nextLine();
+
+            List<Reservation> userReservations = reservationService.getReservationsByUser(userName);
+            if (userReservations.isEmpty()) {
+                System.out.println("No reservations found for " + userName);
+                return;
+            }
+
+            System.out.println("\nYour Reservations:");
+            for (Reservation reservation : userReservations) {
+                System.out.println("ID: " + reservation.getId() +
+                        " | Date: " + reservation.getDate() +
+                        " | Time: " + reservation.getStartTime() + "-" + reservation.getEndTime() +
+                        " | Space: " + reservation.getSpace().getId());
+            }
+
+            System.out.print("\nEnter reservation ID to cancel (0 to cancel): ");
+            int reservationId = scanner.nextInt();
+            scanner.nextLine();
+
+            if (reservationId != 0) {
+                reservationService.cancelReservation(reservationId);
+                System.out.println("Reservation cancelled successfully!");
+            }
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void displayAllReservations() {
+        try {
+            List<Reservation> reservations = reservationService.getAllReservations();
+            if (reservations.isEmpty()) {
+                System.out.println("No reservations found.");
+                return;
+            }
+
+            System.out.println("\nAll Reservations:");
+            System.out.println("ID\tUser\t\tDate\t\tTime\t\tSpace ID");
+            System.out.println("--------------------------------------------------");
+
+            for (Reservation reservation : reservations) {
+                System.out.printf("%d\t%-10s\t%s\t%s-%s\t%d\n",
+                        reservation.getId(),
+                        reservation.getUserName(),
+                        reservation.getDate(),
+                        reservation.getStartTime(),
+                        reservation.getEndTime(),
+                        reservation.getSpace().getId());
+            }
+        } catch (Exception e) {
+            System.err.println("Error displaying reservations: " + e.getMessage());
+        }
+    }
+}
