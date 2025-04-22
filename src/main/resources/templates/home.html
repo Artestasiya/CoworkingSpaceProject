@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Список бронирований</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 80%;
+            margin: 20px auto;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+<h1>Список бронирований</h1>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Пользователь</th>
+        <th>Дата</th>
+        <th>Начало</th>
+        <th>Конец</th>
+        <th>Пространство</th>
+    </tr>
+    <tr th:each="res : ${reservations}">
+        <td th:text="${res.id}"></td>
+        <td th:text="${res.userName}"></td>
+        <td th:text="${res.date}"></td>
+        <td th:text="${res.startTime}"></td>
+        <td th:text="${res.endTime}"></td>
+        <td th:text="${res.space.id}"></td>
+    </tr>
+</table>
+</body>
+</html>
