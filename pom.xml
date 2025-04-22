@@ -107,6 +107,12 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
+
+            <!-- ✅ Плагин для запуска Spring Boot приложения -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
 </project>
